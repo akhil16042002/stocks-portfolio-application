@@ -1,5 +1,6 @@
 package com.akhil.stocks_portfolio.entity;
 
+import com.akhil.stocks_portfolio.dto.Broker;
 import com.akhil.stocks_portfolio.dto.Exchange;
 import com.akhil.stocks_portfolio.dto.TradeType;
 import jakarta.persistence.*;
@@ -20,7 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "trades")
 public class Trade {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private final long id;
 
     @Version
@@ -37,6 +38,9 @@ public class Trade {
     private final String userName;
     private final String isin;
     private final String stockName;
+
+    @Enumerated(EnumType.STRING)
+    private final Broker broker;
 
     @Enumerated(EnumType.STRING)
     private final Exchange exchange;

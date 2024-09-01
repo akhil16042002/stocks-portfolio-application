@@ -73,6 +73,7 @@ public class TradeServiceImpl implements TradeService{
                 .userName(user.getUserName())
                 .isin(stock.getIsin())
                 .stockName(stock.getStockName())
+                .broker(createTradeRequest.getBroker())
                 .exchange(stock.getExchange())
                 .tradeType(createTradeRequest.getTradeType())
                 .quantity(createTradeRequest.getQuantity())

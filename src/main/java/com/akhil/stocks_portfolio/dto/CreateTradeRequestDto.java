@@ -16,6 +16,9 @@ public class CreateTradeRequestDto {
     private final String stockName;
 
     @Enumerated(EnumType.STRING)
+    private final Broker broker;
+
+    @Enumerated(EnumType.STRING)
     private final Exchange exchange;
 
     @Enumerated(EnumType.STRING)
