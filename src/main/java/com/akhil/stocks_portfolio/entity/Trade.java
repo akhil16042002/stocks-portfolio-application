@@ -35,6 +35,7 @@ public class Trade {
     @UpdateTimestamp
     private final LocalDateTime updatedAt;
 
+    private final LocalDateTime orderDate;
     private final String userName;
     private final String isin;
     private final String stockName;

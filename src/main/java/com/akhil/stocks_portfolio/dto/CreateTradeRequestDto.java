@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor(force = true)
@@ -26,4 +28,5 @@ public class CreateTradeRequestDto {
 
     private final int quantity;
     private final double price;
+    private final LocalDateTime orderDate;
 }

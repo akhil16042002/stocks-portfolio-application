@@ -41,12 +41,9 @@ public class PortfolioServiceImpl implements PortfolioService{
             }
             User user = optionalUser.get();
             List<Trade> tradeList = tradeRepository.findAllByUserName(userName);
-            Map<StockNameExchangeDto, List<Trade>> stockToTradeMap = new HashMap<>();
+            Map<String, List<Trade>> stockToTradeMap = new HashMap<>();
             for (Trade trade : tradeList) {
-                StockNameExchangeDto key = StockNameExchangeDto.builder()
-                        .stockName(trade.getStockName())
-                        .exchange(trade.getExchange())
-                        .build();
+                String key = trade.getStockName();
                 if (stockToTradeMap.containsKey(key)) {
                     stockToTradeMap.get(key).add(trade);
                 }
@@ -57,17 +54,14 @@ public class PortfolioServiceImpl implements PortfolioService{
                 }
             }
             List<Holding> holdings = new ArrayList<>();
-            for (Map.Entry<StockNameExchangeDto, List<Trade>> entry : stockToTradeMap.entrySet()) {
-                StockNameExchangeDto key = entry.getKey();
+            for (Map.Entry<String, List<Trade>> entry : stockToTradeMap.entrySet()) {
+                String stockName = entry.getKey();
                 List<Trade> trades = entry.getValue();
-                Optional<Stock> optionalStock = stockRepository.findByStockNameAndExchange(
-                        key.getStockName(),
-                        key.getExchange());
-                if (optionalStock.isEmpty()) {
-                    return Response.failed(HttpStatus.BAD_REQUEST, "Stock " + key.getStockName() + " is not present in " + key.getExchange());
+                List<Stock> stockList = stockRepository.findAllByStockName(stockName);
+                if (stockList.isEmpty()) {
+                    return Response.failed(HttpStatus.BAD_REQUEST, "Stock " + stockName + " is not present");
                 }
-                Stock stock = optionalStock.get();
-                Holding holding = calculateHolding(stock, trades);
+                Holding holding = calculateHolding(stockList, trades);
                 if (!ObjectUtils.isEmpty(holding)) {
                     holdings.add(holding);
                 }
@@ -105,45 +99,76 @@ public class PortfolioServiceImpl implements PortfolioService{
                 .build();
     }
 
-    private Holding calculateHolding(Stock stock, List<Trade> trades) {
-        trades.sort(Comparator.comparing(Trade::getCreatedAt));
+    private Holding calculateHolding(List<Stock> stockList, List<Trade> trades) {
+        trades.sort(Comparator.comparing(Trade::getOrderDate));
         double avgBuyPrice = 0;
         double totalBuyAmount = 0;
         double currentInvestment = 0;
         int buyQuantity = 0;
         int sellQuantity = 0;
+        int nseQuantity = 0;
+        int bseQuantity = 0;
+        double closingPrice = 0;
+        String stockName = null;
         for (Trade trade : trades) {
             if (trade.getTradeType().equals(TradeType.BUY)) {
                 buyQuantity += trade.getQuantity();
                 totalBuyAmount += trade.getPrice() * trade.getQuantity();
                 currentInvestment += trade.getPrice() * trade.getQuantity();
+                if(trade.getExchange().equals(Exchange.NSE)) {
+                    nseQuantity += trade.getQuantity();
+                }
+                else {
+                    bseQuantity += trade.getQuantity();
+                }
             }
             else {
                 sellQuantity += trade.getQuantity();
                 currentInvestment -= trade.getPrice() * trade.getQuantity();
+                if(trade.getExchange().equals(Exchange.NSE)) {
+                    nseQuantity -= trade.getQuantity();
+                }
+                else {
+                    bseQuantity -= trade.getQuantity();
+                }
             }
             if (buyQuantity - sellQuantity == 0) {
                 buyQuantity = 0;
                 sellQuantity = 0;
                 totalBuyAmount = 0;
+                currentInvestment = 0;
             }
         }
         int quantity = buyQuantity - sellQuantity;
         if (quantity == 0) {
             return null;
         }
+        if (stockList.size() == 1) {
+            closingPrice = stockList.getFirst().getClosingPrice();
+        }
+        else {
+            for (Stock stock : stockList) {
+                if (stock.getExchange().equals(Exchange.NSE) && nseQuantity >= bseQuantity) {
+                    closingPrice = stock.getClosingPrice();
+                    stockName = stock.getStockName();
+                }
+                else if (stock.getExchange().equals(Exchange.BSE) && bseQuantity > nseQuantity) {
+                    closingPrice = stock.getClosingPrice();
+                    stockName = stock.getStockName();
+                }
+            }
+        }
         avgBuyPrice = totalBuyAmount / buyQuantity;
-        double currentHolding = stock.getClosingPrice() * quantity;
+        double currentHolding = closingPrice * quantity;
         double gainOrLoss = currentHolding - currentInvestment;
         double gainOrLossPercentage = gainOrLoss / currentInvestment * 100;
 
         return Holding.builder()
-                .isin(stock.getIsin())
-                .stockName(stock.getStockName())
-                .exchange(stock.getExchange())
+                .isin(stockList.getFirst().getIsin())
+                .stockName(stockName)
                 .quantity(quantity)
                 .avgBuyPrice(avgBuyPrice)
-                .currentPrice(stock.getClosingPrice())
+                .currentPrice(closingPrice)
                 .currentInvestment(currentInvestment)
                 .currentHolding(currentHolding)
                 .gainOrLoss(gainOrLoss)

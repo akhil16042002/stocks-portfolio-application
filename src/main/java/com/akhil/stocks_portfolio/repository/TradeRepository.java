@@ -9,6 +9,6 @@ import java.util.List;
 
 @Repository
 public interface TradeRepository extends JpaRepository<Trade, Long> {
-    List<Trade> findAllByUserNameAndStockNameAndExchange(String userName, String stockName, Exchange exchange);
     List<Trade> findAllByUserName(String userName);
+    List<Trade> findAllByUserNameAndStockName(String userName, String stockName);
 }

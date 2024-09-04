@@ -35,9 +35,9 @@ public class StockServiceImpl implements StockService {
             List<CSVRecord> records = parser.getRecords();
             for (var record : records) {
                 try {
-                    String isin = record.get(exchange == Exchange.NSE ? "ISIN" : "ISIN_CODE");
-                    String stockName = record.get(exchange == Exchange.NSE ? "TckrSymb" : "SC_NAME").trim();
-                    double closingPrice = Double.parseDouble(record.get(exchange == Exchange.NSE ? "ClsPric" : "LAST"));
+                    String isin = record.get("ISIN");
+                    String stockName = record.get("FinInstrmNm").trim();
+                    double closingPrice = Double.parseDouble(record.get(exchange == Exchange.NSE ? "ClsPric" : "LastPric"));
 
                     log.info("Saving record: ISIN: {}, Name: {}", isin, stockName);
 
@@ -77,6 +77,14 @@ public class StockServiceImpl implements StockService {
             return Response.success(HttpStatus.OK, stock);
         }
         return Response.failed(HttpStatus.BAD_REQUEST, "Stock not found for ISIN: " + isin + " and Exchange: " + exchange);
+    }
+
+    @Override
+    public ResponseEntity<Response<List<Stock>>> getStockData(String stockName) {
+        log.info("Fetching stock data for : {}", stockName);
+        List<Stock> stockList = stockRepository.findAllStocksByName(stockName);
+        log.info("Successfully fetched stock data for : {}", stockName);
+        return Response.success(HttpStatus.OK, stockList);
     }
 
 }
