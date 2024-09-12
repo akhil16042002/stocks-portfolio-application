@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface StockRepository extends JpaRepository<Stock, Long> {
     Optional<Stock> findByIsinAndExchange(String isin, Exchange exchange);
     Optional<Stock> findByStockNameAndExchange(String stockName, Exchange exchange);
-    List<Stock> findAllByStockName(String stockName);
+    List<Stock> findAllByIsin(String isin);
 
     @Query("SELECT s FROM Stock s WHERE REPLACE(s.stockName, ' ', '') LIKE %:stockName%")
     List<Stock> findAllStocksByName(@Param("stockName") String stockName);

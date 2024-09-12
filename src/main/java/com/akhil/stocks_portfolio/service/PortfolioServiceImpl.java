@@ -2,7 +2,6 @@ package com.akhil.stocks_portfolio.service;
 
 import com.akhil.stocks_portfolio.dto.Exchange;
 import com.akhil.stocks_portfolio.dto.Response;
-import com.akhil.stocks_portfolio.dto.StockNameExchangeDto;
 import com.akhil.stocks_portfolio.dto.TradeType;
 import com.akhil.stocks_portfolio.entity.*;
 import com.akhil.stocks_portfolio.repository.StockRepository;
@@ -15,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
 @Service
@@ -41,42 +43,65 @@ public class PortfolioServiceImpl implements PortfolioService{
             }
             User user = optionalUser.get();
             List<Trade> tradeList = tradeRepository.findAllByUserName(userName);
-            Map<String, List<Trade>> stockToTradeMap = new HashMap<>();
-            for (Trade trade : tradeList) {
-                String key = trade.getStockName();
-                if (stockToTradeMap.containsKey(key)) {
-                    stockToTradeMap.get(key).add(trade);
-                }
-                else {
-                    List<Trade> trades = new ArrayList<>();
-                    trades.add(trade);
-                    stockToTradeMap.put(key, trades);
-                }
-            }
-            List<Holding> holdings = new ArrayList<>();
-            for (Map.Entry<String, List<Trade>> entry : stockToTradeMap.entrySet()) {
-                String stockName = entry.getKey();
-                List<Trade> trades = entry.getValue();
-                List<Stock> stockList = stockRepository.findAllByStockName(stockName);
-                if (stockList.isEmpty()) {
-                    return Response.failed(HttpStatus.BAD_REQUEST, "Stock " + stockName + " is not present");
-                }
-                Holding holding = calculateHolding(stockList, trades);
-                if (!ObjectUtils.isEmpty(holding)) {
-                    holdings.add(holding);
-                }
-            }
-            if (holdings.isEmpty()) {
-                log.info("You have no holdings present in your portfolio");
-                return Response.failed(HttpStatus.BAD_REQUEST, "You have no holdings present in your portfolio");
-            }
-            Portfolio portfolio = calculatePortfolio(user, holdings);
-            log.info("Successfully fetched portfolio details for: {} with portfolio: {}", userName, portfolio);
-            return Response.success(HttpStatus.OK, portfolio);
+            return buildPortfolio(user, tradeList);
         } catch (Exception e) {
-            log.error("Error while fetching trade details for: {}", userName, e);
+            log.error("Error while fetching trade details for user: {}", userName, e);
             throw new RuntimeException("Error occurred while fetching trade details for : " + userName, e);
         }
+    }
+
+    @Override
+    public ResponseEntity<Response<Portfolio>> getPortfolioDetailsByDate(String userName, LocalDate startDate, LocalDate endDate) {
+        try {
+            log.info("Fetching trades for user : {} start date : {} end date {}", userName, startDate, endDate);
+            Optional<User> optionalUser = userRepository.findByUserName(userName);
+            if (optionalUser.isEmpty()) {
+                return Response.failed(HttpStatus.BAD_REQUEST, "User name " + userName + " does not exist");
+            }
+            User user = optionalUser.get();
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+            List<Trade> tradeList = tradeRepository.findAllTradesByUsernameAndDateRange(userName, startDateTime, endDateTime);
+            return buildPortfolio(user, tradeList);
+        } catch (Exception e) {
+            log.error("Error occurred while fetching trades for user : {} start date : {} end date {}", userName, startDate, endDate, e);
+            throw new RuntimeException("Error occurred while fetching trades for user : " + userName + " start date : " + startDate + " end date : " + endDate);
+        }
+    }
+
+    private ResponseEntity<Response<Portfolio>> buildPortfolio(User user, List<Trade> tradeList) {
+        Map<String, List<Trade>> stockToTradeMap = new HashMap<>();
+        for (Trade trade : tradeList) {
+            String key = trade.getIsin();
+            if (stockToTradeMap.containsKey(key)) {
+                stockToTradeMap.get(key).add(trade);
+            }
+            else {
+                List<Trade> trades = new ArrayList<>();
+                trades.add(trade);
+                stockToTradeMap.put(key, trades);
+            }
+        }
+        List<Holding> holdings = new ArrayList<>();
+        for (Map.Entry<String, List<Trade>> entry : stockToTradeMap.entrySet()) {
+            String isin = entry.getKey();
+            List<Trade> trades = entry.getValue();
+            List<Stock> stockList = stockRepository.findAllByIsin(isin);
+            if (stockList.isEmpty()) {
+                return Response.failed(HttpStatus.BAD_REQUEST, "ISIN " + isin + " is not present");
+            }
+            Holding holding = calculateHolding(stockList, trades);
+            if (!ObjectUtils.isEmpty(holding)) {
+                holdings.add(holding);
+            }
+        }
+        if (holdings.isEmpty()) {
+            log.info("You have no holdings present in your portfolio");
+            return Response.failed(HttpStatus.BAD_REQUEST, "You have no holdings present in your portfolio");
+        }
+        Portfolio portfolio = calculatePortfolio(user, holdings);
+        log.info("Successfully fetched portfolio details for user: {} with portfolio: {}", user.getUserName(), portfolio);
+        return Response.success(HttpStatus.OK, portfolio);
     }
 
     private Portfolio calculatePortfolio(User user, List<Holding> holdings) {

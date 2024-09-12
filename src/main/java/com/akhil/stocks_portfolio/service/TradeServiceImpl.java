@@ -56,11 +56,11 @@ public class TradeServiceImpl implements TradeService{
             Stock stock = optionalStock.get();
             Trade trade;
             if (createTradeRequest.getTradeType().equals(TradeType.BUY)) {
-                trade = placeTrade(user.getUserName(), stock.getIsin(), stock.getStockName(), createTradeRequest.getBroker(), stock.getExchange(), createTradeRequest.getTradeType(), createTradeRequest.getQuantity(), createTradeRequest.getPrice(), createTradeRequest.getOrderDate());
+                trade = placeTrade(user, stock, createTradeRequest);
             }
             else if (createTradeRequest.getTradeType().equals(TradeType.SELL)) {
-                if (canPlaceSellTrade(user.getUserName(), stock.getStockName(), stock.getExchange(), createTradeRequest.getQuantity())) {
-                    trade = placeTrade(user.getUserName(), stock.getIsin(), stock.getStockName(), createTradeRequest.getBroker(), stock.getExchange(), createTradeRequest.getTradeType(), createTradeRequest.getQuantity(), createTradeRequest.getPrice(), createTradeRequest.getOrderDate());
+                if (canPlaceSellTrade(user, stock, createTradeRequest)) {
+                    trade = placeTrade(user, stock, createTradeRequest);
                 }
                 else {
                     return Response.failed(HttpStatus.BAD_REQUEST, "User " + user.getUserName() + " has insufficient quantity of " + stock.getStockName() + " - " + stock.getExchange() + " shares to sell");
@@ -81,11 +81,9 @@ public class TradeServiceImpl implements TradeService{
     public ResponseEntity<Response<String>> uploadKiteFile(MultipartFile file, Broker broker, String userName) {
         try {
             log.info("Uploading new trades for {}", userName);
-            Optional<User> optionalUser = userRepository.findByUserName(userName);
-            if (optionalUser.isEmpty()) {
+            if (userRepository.findByUserName(userName).isEmpty()) {
                 return Response.failed(HttpStatus.BAD_REQUEST, "User name " + userName + " does not exist");
             }
-            User user = optionalUser.get();
             CSVParser parser = CSVParser.parse(file.getInputStream(), StandardCharsets.UTF_8, CSVFormat.DEFAULT.withFirstRecordAsHeader());
             List<CSVRecord> records = parser.getRecords();
             List<Trade> tradeList = new ArrayList<>();
@@ -133,23 +131,23 @@ public class TradeServiceImpl implements TradeService{
                 .build();
     }
 
-    private Trade placeTrade(String userName, String isin, String stockName, Broker broker, Exchange exchange, TradeType tradeType, int quantity, double price, LocalDateTime orderDate) {
+    private Trade placeTrade(User user, Stock stock, CreateTradeRequestDto createTradeRequest) {
         Trade trade = Trade.builder()
-                .userName(userName)
-                .isin(isin)
-                .stockName(stockName)
-                .broker(broker)
-                .exchange(exchange)
-                .tradeType(tradeType)
-                .quantity(quantity)
-                .price(price)
-                .orderDate(orderDate)
+                .userName(user.getUserName())
+                .isin(stock.getIsin())
+                .stockName(stock.getStockName())
+                .broker(createTradeRequest.getBroker())
+                .exchange(stock.getExchange())
+                .tradeType(createTradeRequest.getTradeType())
+                .quantity(createTradeRequest.getQuantity())
+                .price(createTradeRequest.getPrice())
+                .orderDate(createTradeRequest.getOrderDate())
                 .build();
         return tradeRepository.save(trade);
     }
 
-    private boolean canPlaceSellTrade(String userName ,String stockName, Exchange exchange, int quantity) {
-        List<Trade> trades = tradeRepository.findAllByUserNameAndStockName(userName, stockName);
+    private boolean canPlaceSellTrade(User user, Stock stock, CreateTradeRequestDto createTradeRequest) {
+        List<Trade> trades = tradeRepository.findAllByUserNameAndIsin(user.getUserName(), stock.getIsin());
         int buyQuantity = 0;
         int sellQuantity = 0;
         for (Trade trade : trades) {
@@ -160,7 +158,7 @@ public class TradeServiceImpl implements TradeService{
                 sellQuantity += trade.getQuantity();
             }
         }
-        return buyQuantity >= sellQuantity + quantity;
+        return buyQuantity >= sellQuantity + createTradeRequest.getQuantity();
     }
 
 }
