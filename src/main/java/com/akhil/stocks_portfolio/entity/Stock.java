@@ -1,6 +1,6 @@
 package com.akhil.stocks_portfolio.entity;
 
-import com.akhil.stocks_portfolio.dto.Exchange;
+import com.akhil.stocks_portfolio.enums.Exchange;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

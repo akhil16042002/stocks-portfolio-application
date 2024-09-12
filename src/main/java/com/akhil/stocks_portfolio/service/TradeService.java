@@ -1,6 +1,6 @@
 package com.akhil.stocks_portfolio.service;
 
-import com.akhil.stocks_portfolio.dto.Broker;
+import com.akhil.stocks_portfolio.enums.Broker;
 import com.akhil.stocks_portfolio.dto.CreateTradeRequestDto;
 import com.akhil.stocks_portfolio.dto.Response;
 import com.akhil.stocks_portfolio.entity.Trade;

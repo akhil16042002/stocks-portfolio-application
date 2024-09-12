@@ -1,5 +1,6 @@
 package com.akhil.stocks_portfolio.dto;
 
+import com.akhil.stocks_portfolio.enums.Exchange;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;

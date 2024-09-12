@@ -1,6 +1,6 @@
 package com.akhil.stocks_portfolio.service;
 
-import com.akhil.stocks_portfolio.dto.Exchange;
+import com.akhil.stocks_portfolio.enums.Exchange;
 import com.akhil.stocks_portfolio.dto.Response;
 import com.akhil.stocks_portfolio.entity.Stock;
 import com.akhil.stocks_portfolio.repository.StockRepository;

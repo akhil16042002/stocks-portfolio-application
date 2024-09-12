@@ -1,4 +1,4 @@
-package com.akhil.stocks_portfolio.dto;
+package com.akhil.stocks_portfolio.enums;
 
 public enum TradeType {
     BUY,
